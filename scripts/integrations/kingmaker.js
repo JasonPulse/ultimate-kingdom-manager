@@ -2,16 +2,22 @@
  * Read-only access to the official Kingmaker module (pf2e-kingmaker).
  * Everything that touches its runtime lives here, so an update to that
  * module only ever needs changes in this file.
+ *
+ * Without the official module, a "stolen-lands" module can stand in: its api
+ * has the same shape (CONST.ZONES, CONST.HEXES, state.hexes, region).
  */
 
 const KINGMAKER_ID = "pf2e-kingmaker";
-
-export function isKingmakerActive() {
-  return !!game.modules.get(KINGMAKER_ID)?.active && !!globalThis.kingmaker?.CONST;
-}
+const STOLEN_LANDS_ID = "stolen-lands";
 
 function km() {
-  return isKingmakerActive() ? globalThis.kingmaker : null;
+  if (game.modules.get(KINGMAKER_ID)?.active && globalThis.kingmaker?.CONST) return globalThis.kingmaker;
+  const standIn = game.modules.get(STOLEN_LANDS_ID);
+  return standIn?.active && standIn.api?.CONST ? standIn.api : null;
+}
+
+export function isKingmakerActive() {
+  return !!km();
 }
 
 /** Static hex definitions are keyed "i.j"; saved hex state is keyed 1000 * i + j. */
@@ -153,7 +159,7 @@ export function getHexCenter(stateKey) {
 /** Called whenever the GM edits the region map. */
 export function onRegionChange(callback) {
   Hooks.on("updateSetting", (setting) => {
-    if (setting.key === `${KINGMAKER_ID}.state`) callback();
+    if (setting.key === `${KINGMAKER_ID}.state` || setting.key === `${STOLEN_LANDS_ID}.state`) callback();
   });
   Hooks.on("closeKingmakerHexEdit", () => callback());
 }
